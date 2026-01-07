@@ -302,7 +302,7 @@
         tr.innerHTML = `
           <td>${s.name}</td>
           <td>${s.id.slice(0, 8)}…</td>
-          <td><a href="${s.url}?key=${s.key}" target="_blank">loader</a></td>
+          <td><a href="${s.url}" target="_blank">loader</a></td>
           <td>${s.key.slice(0, 8)}…</td>
           <td>${new Date(s.created).toLocaleDateString()}</td>`;
         tbody.appendChild(tr);
