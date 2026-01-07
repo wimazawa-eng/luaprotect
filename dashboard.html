@@ -271,7 +271,7 @@
       reader.onload = ev => {
         const id = uuid();
         const key = uuid();
-        const url = 'https://luabackend.vercel.app/api/load/' + id;
+        const url = `https://luabackend.vercel.app/api/load/${id}?key=${key}`;
         const scripts = JSON.parse(localStorage.getItem(LS.scripts) || "[]");
         scripts.push({
           id,
