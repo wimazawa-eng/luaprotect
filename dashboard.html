@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>LuaProtect | Dashboard</title>
+  <style>
+    :root {
+      --bg: #0d1117;
+      --blk: #161b22;
+      --bord: #30363d;
+      --fg: #00ff41;
+      --sub: #3fb950;
+      --dim: #8b949e;
+      --err: #f85149;
+      --font: "Courier New", Courier, monospace;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: var(--font);
+    }
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      display: flex;
+      height: 100vh;
+    }
+    aside {
+      width: 220px;
+      background: var(--blk);
+      border-right: 1px solid var(--bord);
+      padding: 1.2rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+    }
+    aside h1 {
+      font-size: 1.3rem;
+      letter-spacing: 1px;
+      margin-bottom: 1rem;
+    }
+    aside button {
+      background: transparent;
+      border: 1px solid var(--bord);
+      color: var(--dim);
+      padding: 0.5rem 0.7rem;
+      cursor: pointer;
+      text-align: left;
+      transition: 0.2s;
+    }
+    aside button.active,
+    aside button:hover {
+      color: var(--fg);
+      border-color: var(--fg);
+    }
+    main {
+      flex: 1;
+      padding: 2rem;
+      overflow-y: auto;
+    }
+    .pane {
+      display: none;
+    }
+    .pane.active {
+      display: block;
+    }
+    h2 {
+      margin-bottom: 1rem;
+      border-left: 3px solid var(--fg);
+      padding-left: 0.8rem;
+    }
+    .btn {
+      background: transparent;
+      border: 1px solid var(--fg);
+      color: var(--fg);
+      padding: 0.4rem 0.8rem;
+      cursor: pointer;
+    }
+    .btn:hover {
+      background: var(--fg);
+      color: var(--bg);
+    }
+    input[type="text"],
+    input[type="file"],
+    select {
+      background: var(--blk);
+      border: 1px solid var(--bord);
+      color: var(--fg);
+      padding: 0.4rem 0.6rem;
+      width: 100%;
+      margin-bottom: 0.8rem;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+    th,
+    td {
+      padding: 0.5rem;
+      text-align: left;
+      border-bottom: 1px solid var(--bord);
+    }
+    th {
+      color: var(--sub);
+    }
+    pre {
+      background: var(--blk);
+      border: 1px solid var(--bord);
+      padding: 0.8rem;
+      overflow-x: auto;
+      font-size: 0.85rem;
+      color: var(--dim);
+    }
+    .spark {
+      display: inline-flex;
+      gap: 2px;
+      align-items: flex-end;
+      height: 20px;
+    }
+    .spark span {
+      width: 3px;
+      background: var(--sub);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      50% {
+        background: var(--fg);
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside>
+    <h1>LuaProtect</h1>
+    <button class="tab-btn active" data-tab="scripts">Scripts</button>
+    <button class="tab-btn" data-tab="analytics">Analytics</button>
+    <button class="tab-btn" data-tab="licenses">Licenses</button>
+    <button class="tab-btn" data-tab="settings">Settings</button>
+  </aside>
+
+  <main>
+    <!-- Scripts pane -->
+    <section id="scripts" class="pane active">
+      <h2>> scripts.list()</h2>
+      <button class="btn" id="show-upload">+ Upload Script</button>
+      <form id="upload-form" style="display:none; margin-top:1rem;">
+        <input type="text" id="script-name" placeholder="Script display name" required />
+        <input type="file" id="script-file" accept=".lua" required />
+        <button class="btn" type="submit">Upload & Obfuscate</button>
+      </form>
+      <table id="script-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Script-ID</th>
+            <th>Loader URL</th>
+            <th>API Key</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Analytics pane -->
+    <section id="analytics" class="pane">
+      <h2>> analytics.summary()</h2>
+      <p>Total executes: <strong id="total-runs">0</strong></p>
+      <p>Unique users: <strong id="unique-users">0</strong></p>
+      <div class="spark" id="spark"></div>
+      <h3 style="margin-top:1.5rem;">Per-script</h3>
+      <table id="analytics-table">
+        <thead>
+          <tr>
+            <th>Script</th>
+            <th>Executes</th>
+            <th>Failures</th>
+            <th>Last execute</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Licenses pane -->
+    <section id="licenses" class="pane">
+      <h2>> licenses.create()</h2>
+      <button class="btn" id="show-license">+ New License</button>
+      <form id="license-form" style="display:none; margin-top:1rem;">
+        <select id="license-script">
+          <option value="">Pick script</option>
+        </select>
+        <input type="number" id="license-seats" placeholder="Seats (0 = unlimited)" min="0" />
+        <input type="number" id="license-days" placeholder="Days valid" min="1" />
+        <button class="btn" type="submit">Generate Key</button>
+      </form>
+      <table id="license-table">
+        <thead>
+          <tr>
+            <th>Key</th>
+            <th>Script</th>
+            <th>Seats</th>
+            <th>Expires</th>
+            <th>Used</th>
+            <th>Revoke</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <!-- Settings pane -->
+    <section id="settings" class="pane">
+      <h2>> settings.update()</h2>
+      <label style="color:var(--sub)">Master API Key</label>
+      <input type="text" id="api-key" readonly />
+      <button class="btn" id="regen-key">Regenerate</button>
+      <label style="color:var(--sub); margin-top:1rem; display:block;">Webhook URL (optional)</label>
+      <input type="text" id="webhook" placeholder="https://your.webhook" />
+      <button class="btn" id="save-webhook">Save</button>
+    </section>
+  </main>
+
+  <script>
+    /* ---------- UTILS ---------- */
+    const $ = q => document.querySelector(q);
+    const LS = {
+      scripts: "lp_scripts",
+      licenses: "lp_licenses",
+      runs: "lp_runs",
+      api: "lp_api",
+      webhook: "lp_webhook"
+    };
+    function uuid() {
+      return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
+        (c ^ (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))).toString(16)
+      );
+    }
+    function randInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+    /* ---------- INIT ---------- */
+    if (!localStorage.getItem(LS.api)) localStorage.setItem(LS.api, uuid());
+    $("#api-key").value = localStorage.getItem(LS.api);
+    $("#webhook").value = localStorage.getItem(LS.webhook) || "";
+
+    /* ---------- TABS ---------- */
+    document.querySelectorAll(".tab-btn").forEach(btn =>
+      btn.addEventListener("click", e => {
+        document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
+        document.querySelectorAll(".pane").forEach(p => p.classList.remove("active"));
+        btn.classList.add("active");
+        $(`#${btn.dataset.tab}`).classList.add("active");
+        if (btn.dataset.tab === "analytics") renderAnalytics();
+        if (btn.dataset.tab === "licenses") renderLicenses();
+      })
+    );
+
+    /* ---------- SCRIPTS ---------- */
+    $("#show-upload").onclick = () => $("#upload-form").style.display = "block";
+    $("#upload-form").onsubmit = e => {
+      e.preventDefault();
+      const name = $("#script-name").value.trim();
+      const file = $("#script-file").files[0];
+      if (!name || !file) return alert("Fill fields");
+      const reader = new FileReader();
+      reader.onload = ev => {
+        const id = uuid();
+        const key = uuid();
+        const url = `https://api.luaprotect.net/v1/load/${id}`;
+        const scripts = JSON.parse(localStorage.getItem(LS.scripts) || "[]");
+        scripts.push({
+          id,
+          name,
+          url,
+          key,
+          created: new Date().toISOString()
+        });
+        localStorage.setItem(LS.scripts, JSON.stringify(scripts));
+        /* fake runs entry */
+        const runs = JSON.parse(localStorage.getItem(LS.runs) || "{}");
+        runs[id] = { total: 0, fails: 0, users: new Set(), last: null };
+        localStorage.setItem(LS.runs, JSON.stringify(runs));
+        renderScripts();
+        $("#upload-form").reset();
+        $("#upload-form").style.display = "none";
+        /* show loader snippet */
+        alert(`Upload fake-complete!\nLoader URL:\n${url}\n\nExample executor usage:\nrequire(game:GetService("HttpService"):GetAsync("${url}?key=${key}"))`);
+      };
+      reader.readAsText(file);
+    };
+    function renderScripts() {
+      const scripts = JSON.parse(localStorage.getItem(LS.scripts) || "[]");
+      const tbody = $("#script-table tbody");
+      tbody.innerHTML = "";
+      scripts.forEach(s => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${s.name}</td>
+          <td>${s.id.slice(0, 8)}…</td>
+          <td><a href="${s.url}" target="_blank">loader</a></td>
+          <td>${s.key.slice(0, 8)}…</td>
+          <td>${new Date(s.created).toLocaleDateString()}</td>`;
+        tbody.appendChild(tr);
+      });
+      /* populate license dropdown */
+      const sel = $("#license-script");
+      sel.innerHTML = '<option value="">Pick script</option>';
+      scripts.forEach(s => {
+        const o = document.createElement("option");
+        o.value = s.id;
+        o.textContent = s.name;
+        sel.appendChild(o);
+      });
+    }
+    renderScripts();
+
+    /* ---------- ANALYTICS ---------- */
+    function renderAnalytics() {
+      const runs = JSON.parse(localStorage.getItem(LS.runs) || "{}");
+      let total = 0,
+        unique = 0;
+      const tbody = $("#analytics-table tbody");
+      tbody.innerHTML = "";
+      Object.entries(runs).forEach(([id, data]) => {
+        total += data.total;
+        unique += data.users.size;
+        const scripts = JSON.parse(localStorage.getItem(LS.scripts) || "[]");
+        const name = scripts.find(x => x.id === id)?.name || "unknown";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${name}</td>
+          <td>${data.total}</td>
+          <td>${data.fails}</td>
+          <td>${data.last ? new Date(data.last).toLocaleString() : "never"}</td>`;
+        tbody.appendChild(tr);
+      });
+      $("#total-runs").textContent = total;
+      $("#unique-users").textContent = unique;
+      /* fake spark */
+      const spark = $("#spark");
+      spark.innerHTML = "";
+      for (let i = 0; i < 24; i++) {
+        const bar = document.createElement("span");
+        bar.style.height = randInt(3, 20) + "px";
+        bar.style.animationDelay = i * 40 + "ms";
+        spark.appendChild(bar);
+      }
+    }
+
+    /* ---------- LICENSES ---------- */
+    $("#show-license").onclick = () => $("#license-form").style.display = "block";
+    $("#license-form").onsubmit = e => {
+      e.preventDefault();
+      const scriptId = $("#license-script").value;
+      const seats = parseInt($("#license-seats").value) || 0;
+      const days = parseInt($("#license-days").value) || 30;
+      if (!scriptId) return alert("Pick script");
+      const licenses = JSON.parse(localStorage.getItem(LS.licenses) || "[]");
+      const key = uuid().replace(/-/g, "").toUpperCase().slice(0, 24);
+      licenses.push({
+        key,
+        scriptId,
+        seats,
+        expires: Date.now() + days * 86400000,
+        used: 0
+      });
+      localStorage.setItem(LS.licenses, JSON.stringify(licenses));
+      renderLicenses();
+      $("#license-form").reset();
+      $("#license-form").style.display = "none";
+      alert(`License key created:\n${key}`);
+    };
+    function renderLicenses() {
+      const licenses = JSON.parse(localStorage.getItem(LS.licenses) || "[]");
+      const scripts = JSON.parse(localStorage.getItem(LS.scripts) || "[]");
+      const tbody = $("#license-table tbody");
+      tbody.innerHTML = "";
+      licenses.forEach(l => {
+        const name = scripts.find(x => x.id === l.scriptId)?.name || "deleted";
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${l.key}</td>
+          <td>${name}</td>
+          <td>${l.seats === 0 ? "∞" : l.seats}</td>
+          <td>${new Date(l.expires).toLocaleDateString()}</td>
+          <td>${l.used}</td>
+          <td><button class="btn" onclick="revokeLicense('${l.key}')">Revoke</button></td>`;
+        tbody.appendChild(tr);
+      });
+    }
+    window.revokeLicense = key => {
+      let licenses = JSON.parse(localStorage.getItem(LS.licenses) || "[]");
+      licenses = licenses.filter(l => l.key !== key);
+      localStorage.setItem(LS.licenses, JSON.stringify(licenses));
+      renderLicenses();
+    };
+
+    /* ---------- SETTINGS ---------- */
+    $("#regen-key").onclick = () => {
+      const nk = uuid();
+      localStorage.setItem(LS.api, nk);
+      $("#api-key").value = nk;
+      alert("API key regenerated—update your loaders!");
+    };
+    $("#save-webhook").onclick = () => {
+      localStorage.setItem(LS.webhook, $("#webhook").value.trim());
+      alert("Webhook saved");
+    };
+  </script>
+</body>
+</html>
